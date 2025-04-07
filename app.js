@@ -23,6 +23,10 @@ app.use(cors(corsOptions));
 app.use(express.json());
 // Add the sanitizer to the express middleware 
 app.use(sanitize.middleware);
+// Define a root route handler for `/`
+app.get('/', (req, res) => {
+  res.send('Welcome to the API!');
+});
 // Add the routes to the application as middleware 
 app.use(router);
 // Start the webserver
