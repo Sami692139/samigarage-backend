@@ -1,6 +1,7 @@
 const db = require("../config/db.config"); // Import the query function from db.config.js
 const bcrypt = require("bcrypt");
 
+
 // Function to check if a customer exists by email or phone number
 const checkIfCustomerExists = async (customerEmail, customerPhoneNumber) => {
   try {
@@ -21,6 +22,7 @@ const checkIfCustomerExists = async (customerEmail, customerPhoneNumber) => {
     throw new Error("Database error while checking customer existence.");
   }
 };
+
 
 // Function to create a new customer
 const createCustomer = async (customerData) => {
@@ -46,6 +48,7 @@ const createCustomer = async (customerData) => {
       customerHash, // This will be an empty string if no password is provided
     ]);
 
+    
     // Get the inserted customer ID
     const customerId = result1.insertId;
 

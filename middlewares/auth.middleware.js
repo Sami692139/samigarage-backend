@@ -7,6 +7,8 @@ const employeeService = require("../services/employee.service");
 
 // A function to verify the token recivied from the frontend
 
+
+
 const verifyToken = async (req, res, next) => {
     const token = req.headers['x-access-token'];
     // Check if the token is provided
@@ -28,6 +30,7 @@ const verifyToken = async (req, res, next) => {
         next();
     });
 
+    
 
 }
 // A function to check if the user is an admin
