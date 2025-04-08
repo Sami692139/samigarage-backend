@@ -1,6 +1,16 @@
 // Import the database connection
 const conn = require("../config/db.config");
 
+
+// Validate if service ID exists
+async function validateServiceExists(serviceId) {
+  const [result] = await conn.query(
+    `SELECT COUNT(*) AS count FROM common_services WHERE service_id = ?`,
+    [serviceId]
+  );
+  return result[0].count > 0;
+}
+
 // Function to create a new order
 async function createOrder(orderData) {
   try {
@@ -183,138 +193,83 @@ async function validateServiceExists(serviceId) {
   return result[0].count > 0; // Returns true if service exists
 }
 
-// Function to update order details
-// async function updateOrder(order_id, updatedData) {
-//   try {
-//     const {
-//       order_total_price,
-//       estimated_completion_date,
-//       completion_date,
-//       additional_request,
-//       notes_for_internal_use,
-//       notes_for_customer,
-//       additional_requests_completed,
-//     } = updatedData;
 
-//     const query = `
-//       UPDATE order_info SET 
-//         order_total_price = ?, 
-//         estimated_completion_date = ?, 
-//         completion_date = ?, 
-//         additional_request = ?, 
-//         notes_for_internal_use = ?, 
-//         notes_for_customer = ?, 
-//         additional_requests_completed = ?
-//       WHERE order_id = ?;
-//     `;
-//     await conn.query(query, [
-//       order_total_price,
-//       estimated_completion_date,
-//       completion_date,
-//       additional_request,
-//       notes_for_internal_use,
-//       notes_for_customer,
-//       additional_requests_completed,
-//       order_id,
+
+//   const connection = await conn.pool.getConnection();
+
+//   try {
+//     console.log("Order Data for Update:", orderData); // Debugging line
+
+//     await connection.beginTransaction();
+
+//     // Remove existing services
+//     await connection.query(`DELETE FROM order_services WHERE order_id = ?`, [
+//       orderId,
 //     ]);
 
+//     if (orderData.services?.length > 0) {
+//       const serviceValues = [];
+//       for (const service of orderData.services) {
+//         const serviceExists = await validateServiceExists(service.service_id);
+//         if (!serviceExists) {
+//           throw new Error(`Service ID ${service.service_id} does not exist.`);
+//         }
+//         serviceValues.push([
+//           orderId,
+//           service.service_id,
+//           service.service_completed,
+//         ]);
+//       }
 
-//     return { success: true, message: "Order updated successfully!" };
+//       const placeholders = serviceValues.map(() => "(?, ?, ?)").join(", ");
+//       await connection.query(
+//         `INSERT INTO order_services (order_id, service_id, service_completed) VALUES ${placeholders}`,
+//         serviceValues.flat()
+//       );
+//     }
+
+//     // Updating order_info with additional fields
+//     const updateParams = {
+//       order_total_price: orderData.totalPrice || 0,
+//       additional_request: orderData.additional_request ?? null,
+//       additional_requests_completed:
+//         orderData.additional_requests_completed ?? 1,
+//     };
+
+//     await connection.query(
+//       `UPDATE order_info 
+//        SET order_total_price = ?, additional_request = COALESCE(?, additional_request), additional_requests_completed = ?
+//        WHERE order_id = ?`,
+//       [
+//         updateParams.order_total_price,
+//         updateParams.additional_request,
+//         updateParams.additional_requests_completed,
+//         orderId,
+//       ]
+//     );
+
+//     const orderStatus =
+//       (orderData.services?.every((s) => s.service_completed === 1) ?? true) &&
+//       (orderData.additional_requests_completed ?? 0) === 1
+//         ? 1
+//         : 0;
+
+//     await connection.query(
+//       `UPDATE orders SET active_order = ? WHERE order_id = ?`,
+//       [orderStatus, orderId]
+//     );
+
+//     await connection.commit();
+//     connection.release();
+//     return { success: true, order_status: orderStatus };
 //   } catch (error) {
-//     console.error("Error updating order:", error);
+//     await connection.rollback();
+//     connection.release();
+//     console.error("Error during order update:", error.message);
 //     return { success: false, message: error.message };
 //   }
 // }
-async function updateOrder(orderId, orderData) {
-  const connection = await conn.pool.getConnection(); // ✅ renamed properly
 
-  try {
-    await connection.beginTransaction();
-
-    // 1. Remove existing services
-    await connection.query(`DELETE FROM order_services WHERE order_id = ?`, [
-      orderId,
-    ]);
-
-    // 2. Validate and insert updated services
-    if (orderData.services?.length > 0) {
-      const serviceValues = [];
-      for (const service of orderData.services) {
-        const serviceExists = await validateServiceExists(service.service_id);
-        if (!serviceExists) {
-          throw new Error(
-            `Service ID ${service.service_id} does not exist in common_services.`
-          );
-        }
-        serviceValues.push([
-          orderId,
-          service.service_id,
-          service.service_completed,
-        ]);
-      }
-
-      const placeholders = serviceValues.map(() => "(?, ?, ?)").join(", ");
-      await connection.query(
-        `INSERT INTO order_services (order_id, service_id, service_completed) VALUES ${placeholders}`,
-        serviceValues.flat()
-      );
-    }
-
-    // 3. Update order_info
-    const updateParams = {
-      order_total_price: orderData.totalPrice,
-      additional_request: orderData.additional_request ?? null,
-      additional_requests_completed:
-        orderData.additional_requests_completed ?? 1,
-    };
-
-    await connection.query(
-      `UPDATE order_info 
-       SET order_total_price = ?, additional_request = COALESCE(?, additional_request), additional_requests_completed = ? 
-       WHERE order_id = ?`,
-      [
-        updateParams.order_total_price,
-        updateParams.additional_request,
-        updateParams.additional_requests_completed,
-        orderId,
-      ]
-    );
-
-    // 4. Determine order active status
-    const allServicesCompleted = () => {
-      if (orderData.received === 2) return 2;
-      const servicesComplete =
-        orderData.services?.every((s) => s.service_completed === 1) ?? true;
-
-      if (!updateParams.additional_request) {
-        return servicesComplete ? 1 : 0;
-      } else {
-        return servicesComplete &&
-          updateParams.additional_requests_completed === 1
-          ? 1
-          : 0;
-      }
-    };
-
-    const orderStatus = allServicesCompleted();
-
-    // 5. Update order's active status
-    await connection.query(
-      `UPDATE orders SET active_order = ? WHERE order_id = ?`,
-      [orderStatus, orderId]
-    );
-
-    await connection.commit();
-    connection.release();
-
-    return { success: true, order_status: orderStatus };
-  } catch (error) {
-    await connection.rollback();
-    connection.release();
-    console.error("Order update failed:", error.message);
-    return { success: false, error: error.message };
-  }
-}
 
 // Function to get a single order by ID
 async function getSingleOrder(order_id) {
@@ -339,6 +294,71 @@ async function getSingleOrder(order_id) {
   }
 }
 
+
+// UPDATE ORDER 
+async function updateOrder(order_id, orderData) {
+  try {
+    // Validate if order ID exists
+    const order = await conn.query(
+      `SELECT COUNT(*) AS count FROM orders WHERE order_id = ?`,
+      [order_id]
+    );
+    if (order[0].count === 0) {
+      throw new Error("Order not found");
+    }
+
+    // Update the order in the orders table
+    const updateQuery = `
+      UPDATE orders 
+      SET employee_id = ?, customer_id = ?, vehicle_id = ?, order_description = ?, estimated_completion_date = ?, order_completed = ? 
+      WHERE order_id = ?;
+    `;
+    await conn.query(updateQuery, [
+      orderData.employee_id,
+      orderData.customer_id,
+      orderData.vehicle_id,
+      orderData.order_description,
+      orderData.estimated_completion_date,
+      orderData.order_completed,
+      order_id,
+    ]);
+
+    // Update the order_info table
+    const updateInfoQuery = `
+      UPDATE order_info 
+      SET order_total_price = ?, additional_request = ?, notes_for_internal_use = ?, notes_for_customer = ? 
+      WHERE order_id = ?;
+    `;
+    await conn.query(updateInfoQuery, [
+      orderData.order_info.order_total_price,
+      orderData.order_info.additional_request,
+      orderData.order_info.notes_for_internal_use,
+      orderData.order_info.notes_for_customer,
+      order_id,
+    ]);
+
+    // Update the services in the order_services table
+    await conn.query(`DELETE FROM order_services WHERE order_id = ?`, [
+      order_id,
+    ]);
+    for (let service of orderData.order_services) {
+      const insertServiceQuery = `
+        INSERT INTO order_services (order_id, service_id, service_completed) 
+        VALUES (?, ?, ?);
+      `;
+      await conn.query(insertServiceQuery, [
+        order_id,
+        service.service_id,
+        service.service_completed || 0,
+      ]);
+    }
+
+    return { success: true, message: "Order updated successfully!" };
+  } catch (error) {
+    console.error("Error updating order:", error);
+    return { success: false, message: error.message };
+  }
+}
 
 
 
@@ -374,4 +394,11 @@ module.exports = {
   updateOrder,
   getSingleOrder,
   deleteOrder,
+  
 };
+
+
+
+
+
+
