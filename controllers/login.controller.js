@@ -40,6 +40,11 @@ async function logIn(req, res, next) {
       data: sendBack,
     });
   } catch (error) {
+    console.error("Login Error:", error); // <--- ADD THIS
+    res.status(500).json({
+      status: "error",
+      message: "Internal server error",
+    });
 
   }
 }

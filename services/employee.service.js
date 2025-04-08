@@ -100,60 +100,7 @@ async function getEmployeeById(employee_id) {
   }
 }
 
-// Function to update employee details  
-// async function updateEmployee(employee_id, updatedData) {
-//   try {
-//     // Update personal details in employee_info table
-//     const sql1 = `
-//       UPDATE employee_info  
-//       SET employee_first_name = ?, 
-//           employee_last_name = ?, 
-//           employee_phone = ? 
-//       WHERE employee_id = ?
-//     `;
 
-//     const params1 = [
-//       updatedData.employee_first_name,
-//       updatedData.employee_last_name,
-//       updatedData.employee_phone,
-//       employee_id,
-//     ];
-
-//     // Execute the query for employee_info table
-//     await conn.query(sql1, params1);
-
-//     // Update active_employee status in employee table
-//     const sql2 = `
-//       UPDATE employee
-//       SET active_employee = ?
-//       WHERE employee_id = ?
-//     `;
-
-//     const params2 = [
-//       updatedData.active_employee, // This is the boolean status for the employee
-//       employee_id,
-//     ];
-
-//     // Execute the query for employee table
-//     await conn.query(sql2, params2);
-
-//     // Update company role in employee_role table
-//     const sql3 = `
-//       UPDATE employee_role
-//       SET company_role_id = ?
-//       WHERE employee_id = ?
-//     `;
-
-//     const params3 = [updatedData.company_role_id, employee_id];
-//     await conn.query(sql3, params3);
-
-//     return { success: true, message: "Employee updated successfully!" };
-//   } catch (error) {
-//     console.error("Error updating employee:", error);
-//     return { success: false, message: "Internal server error" };
-//   }
-// }
-// Function to update employee details
 async function updateEmployee(employee_id, updatedData) {
   try {
     // Check if updatedData contains all necessary fields
