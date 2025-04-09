@@ -9,7 +9,9 @@ const cors = require('cors');
 // Set up the CORS options to allow requests from our front-end 
 const corsOptions = {
   origin: process.env.FRONTEND_URL,
-  optionsSuccessStatus: 200
+  methods: ["GET", "POST", "PUT", "DELETE"],
+  credentials: true,
+  optionSuccessStatus: 200,
 };
 // Create a variable to hold our port number 
 const port = process.env.PORT;
